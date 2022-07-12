@@ -185,7 +185,7 @@ app.post(URI, async (req, res) => {
 				if (!uptimes.length)
 					return sendMessage(chatId, 'No uptime in database');
 				let i = 1;
-				const text = uptimes.map(uptime => `${i++}. Url: ${uptime.url}\n   Time interval: ${uptime.timeInterval}\n   Author: ${uptime.author}`).join('\n\n');
+				const text = uptimes.map(uptime => `${i++}. Url: ${uptime.url}\n   Time interval: ${converTime(uptime.timeInterval)}\n   Author: ${uptime.author}`).join('\n\n');
 				sendMessage(chatId, text);
 				break;
 			}

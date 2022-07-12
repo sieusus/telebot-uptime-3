@@ -62,7 +62,7 @@ function converTime(ms) {
 	const hours = Math.floor(ms / 3600000);
 	const minutes = Math.floor((ms % 3600000) / 60000);
 	const seconds = Math.floor(((ms % 3600000) % 60000) / 1000);
-	return `${hours ? hours + 'h ' : ''}${minutes ? minutes + 'm ' : ''}${seconds ? seconds + 's' : ''}`;
+	return `${hours ? hours + 'h ' : ''}${minutes ? minutes + 'm ' : ''}${seconds ? seconds + 's' : ''}` || '0s';
 }
 
 function sendRequest(url) {
@@ -71,9 +71,9 @@ function sendRequest(url) {
 		.catch(() => {
 			throw new Error('Error when send request');
 		})
-		.finally(() => {
-			UptimeModel.updateOne({ url }, { $inc: { requestCount: 1 } });
-			global.temp.lastSendRequest = Date.now();
+		.finally(async () => {
+			await UptimeModel.updateOne({ url }, { $inc: { requestCount: 1 } });
+			global.temp.lastSendRequest[url] = Date.now();
 		});
 }
 /**
@@ -84,7 +84,7 @@ function getUptime(uptime) {
 	axios.get(uptime.url)
 		.then(() => {
 			if (global.temp.uptimeFail[uptime.url]) {
-				sendMessage(uptime.author, `✅ ${uptime.url} is back online (failed in ${converTime(Date.now() - global.temp.uptimeFail[uptime.url]) || '0s'})`);
+				sendMessage(uptime.author, `✅ ${uptime.url} is back online (failed in ${converTime(Date.now() - global.temp.uptimeFail[uptime.url])})`);
 				delete global.temp.uptimeFail[uptime.url];
 			}
 		})
@@ -95,14 +95,14 @@ function getUptime(uptime) {
 				console.log(`❌ ${uptime.url} is down`, err);
 			}
 		})
-		.finally(() => {
-			UptimeModel.updateOne({ url: uptime.url }, { $inc: { requestCount: 1 } });
-			global.temp.lastSendRequest = Date.now();
+		.finally(async () => {
+			await UptimeModel.updateOne({ url: uptime.url }, { $inc: { requestCount: 1 } });
+			global.temp.lastSendRequest[uptime.url] = Date.now();
 		});
 }
 
 (async () => {
-	const SERVER_URL = await ngrok.connect(PORT);
+	const SERVER_URL = process.env.URL || await ngrok.connect(PORT);
 	const WEBHOOK_URL = SERVER_URL + URI;
 	global.temp = {
 		uptimeFail: {},
@@ -227,14 +227,28 @@ function getUptime(uptime) {
 					if (!url)
 						return sendMessage(chatId, 'Please input url or id');
 					const uptime = await UptimeModel.findOne({ url });
+					if (!uptime)
+						return sendMessage(chatId, `No found uptime url with ${isNaN(url) ? 'url' : 'id'} ${url}`);
 					const createdAt = new Date(uptime.createdAt);
-					const text = `Url: ${uptime.url}\n   Time interval: ${converTime(uptime.timeInterval)}\n   Author: ${uptime.author}\n   Created at: ${createdAt.toLocaleString()}\n	  Last request: ${converTime(Date.now() - uptime.lastSendRequest)}\n   Continue request after: ${converTime(Date.now() - global.temp.lastSendRequest)}\n   Request count: ${uptime.requestCount}`;
+					const text = `Url: ${uptime.url}`
+						+ `\n   Time interval: ${converTime(uptime.timeInterval)}`
+						+ `\n   Author: ${uptime.author}`
+						+ `\n   Created at: ${createdAt.toLocaleString()}`
+						+ `\n	  Last request: ${new Date(global.temp.lastSendRequest[uptime.url]).toLocaleString()} (${converTime(Date.now() - global.temp.lastSendRequest[uptime.url])} ago)`
+						+ `\n   Continue request after: ${converTime(Date.now() - global.temp.lastSendRequest[uptime.url] || 0)}`
+						+ `\n   Request count: ${uptime.requestCount}`;
 					sendMessage(chatId, text);
 				}
 			}
 		}
 		else if (commandName == prefix + 'help') {
-			sendMessage(chatId, `${prefix}uptime add <url> <time interval>\n${prefix}uptime list <all>\n${prefix}uptime remove <url>\n${prefix}uptime delete <url>\n${prefix}uptime del <url>`);
+			sendMessage(chatId, `${prefix}uptime add <url> <time interval>`
+				+ `\n${prefix}uptime list <all?>`
+				+ `\n${prefix}uptime remove <url>`
+				+ `\n${prefix}uptime delete <url>`
+				+ `\n${prefix}uptime del <url>`
+				+ `\n${prefix}uptime info <url>`
+			);
 		}
 		else if (commandName == prefix + 'eval') {
 			if (author != ADMIN_ID)

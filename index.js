@@ -10,7 +10,6 @@ const mongoose = require("mongoose");
 const ngrok = require('ngrok');
 require('dotenv').config();
 
-
 const TOKEN = process.env.TOKEN;
 const MONGO_URI = process.env.MONGO_URI;
 const ADMIN_ID = process.env.ADMIN_ID;
@@ -73,7 +72,7 @@ function sendRequest(url) {
 			throw new Error('Error when send request');
 		})
 		.finally(() => {
-			UptimeModel.updateOne({ url }, { $inc: { countSendRequest: 1 } });
+			UptimeModel.updateOne({ url }, { $inc: { requestCount: 1 } });
 			global.temp.lastSendRequest = Date.now();
 		});
 }
@@ -97,7 +96,7 @@ function getUptime(uptime) {
 			}
 		})
 		.finally(() => {
-			UptimeModel.updateOne({ url: uptime.url }, { $inc: { countSendRequest: 1 } });
+			UptimeModel.updateOne({ url: uptime.url }, { $inc: { requestCount: 1 } });
 			global.temp.lastSendRequest = Date.now();
 		});
 }

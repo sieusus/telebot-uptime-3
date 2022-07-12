@@ -14,7 +14,7 @@ const Uptime = new Schema({
 		type: Number,
 		required: true
 	},
-	countSendRequest: {
+	requestCount: {
 		type: Number,
 		default: 0
 	}

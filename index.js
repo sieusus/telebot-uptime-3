@@ -95,7 +95,6 @@ function getUptime(uptime) {
 		});
 }
 
-
 (async () => {
 	global.temp = {
 		uptimeFail: {},
@@ -119,113 +118,118 @@ function getUptime(uptime) {
 				global.temp.idInterval[uptime.url] = setInterval(() => getUptime(uptime), uptime.timeInterval);
 			});
 
+	app.get('/', (req, res) => {
+		res.send('Hello world!');
+	});
+
+	app.post(URI, async (req, res) => {
+		res.send();
+		const data = req.body;
+		const { chat: { id: chatId }, text: content, from: { id: author, first_name, last_name } } = data.message || {};
+		if (!chatId || !content)
+			return;
+
+		const args = content.split(' ');
+		const commandName = args.shift().toLowerCase();
+		console.log(`📝 ${author} (${first_name} ${last_name}) sent command: ${commandName}`);
+		if (commandName == prefix + 'uptime') {
+			switch (args[0]) {
+				case 'add': {
+					const url = args[1];
+					let timeInterval = args[2];
+					if (!url)
+						return sendMessage(chatId, 'Please input url');
+					if (isNaN(timeInterval))
+						return sendMessage(chatId, 'Please input time interval in number');
+					timeInterval = parseInt(timeInterval * 1000);
+					const uptime = await UptimeModel.findOne({ url });
+					if (uptime)
+						return sendMessage(chatId, 'This url is already in database');
+					try {
+						const newUptime = new UptimeModel({
+							url,
+							timeInterval,
+							author
+						});
+						await newUptime.save();
+						sendMessage(chatId, `Added ${url} to database successfully, send request every ${converTime(timeInterval)}`);
+						sendRequest(url)
+							.then()
+							.catch((e) => {
+								global.temp.uptimeFail[url] = Date.now();
+								sendMessage(chatId, `${url} is down`);
+							})
+							.finally(() => {
+								global.temp.idInterval[url] = setInterval(() => getUptime(newUptime), timeInterval);
+							});
+					}
+					catch (err) {
+						console.log(err);
+						sendMessage(chatId, '❌ Error');
+					}
+					break;
+				}
+				case 'list': {
+					let uptimes = await UptimeModel.find();
+					if (args[1] == 'all') {
+						if (author != ADMIN_ID)
+							return sendMessage(chatId, '❌ You are not admin');
+					}
+					else {
+						uptimes = uptimes.filter(uptime => uptime.author == author);
+					}
+					if (!uptimes.length)
+						return sendMessage(chatId, 'No uptime in database');
+					let i = 1;
+					const text = uptimes.map(uptime => `${i++}. Url: ${uptime.url}\n   Time interval: ${converTime(uptime.timeInterval)}\n   Author: ${uptime.author}`).join('\n\n');
+					sendMessage(chatId, text);
+					break;
+				}
+				case 'remove':
+				case 'delete':
+				case 'del':
+				case '-d': {
+					const url = args.slice(1).join(' ');
+					if (!url)
+						return sendMessage(chatId, 'Please input url or id');
+					let uptime;
+					if (!isNaN(url)) {
+						const uptimes = await UptimeModel.find({});
+						uptime = uptimes[url - 1];
+					}
+					else {
+						uptime = await UptimeModel.findOne({ url });
+					}
+					if (!uptime)
+						return sendMessage(chatId, `No found uptime url with ${isNaN(url) ? 'url' : 'id'} ${url}`);
+					if (uptime.author != author)
+						return sendMessage(chatId, 'You are not owner of this uptime');
+					await UptimeModel.deleteOne({ url: uptime.url });
+					clearInterval(global.temp.idInterval[uptime.url]);
+					sendMessage(chatId, `Removed ${uptime.url} from database successfully`);
+				}
+					break;
+			}
+		}
+		else if (commandName == prefix + 'help') {
+			sendMessage(chatId, `${prefix}uptime add <url> <time interval>\n${prefix}uptime list <all>\n${prefix}uptime remove <url>\n${prefix}uptime delete <url>\n${prefix}uptime del <url>`);
+		}
+		else if (commandName == prefix + 'eval') {
+			if (author != ADMIN_ID)
+				return sendMessage(chatId, '❌ You are not admin');
+			try {
+				eval(args.join(' '));
+			}
+			catch (err) {
+				sendMessage(chatId, `❌ Error: ${err}`);
+			}
+		}
+	});
+
 	app.listen(PORT, async () => {
 		await init();
 	});
 
 })();
 
-app.post(URI, async (req, res) => {
-	res.send();
-	const data = req.body;
-	const { chat: { id: chatId }, text: content, from: { id: author, first_name, last_name } } = data.message || {};
-	if (!chatId || !content)
-		return;
 
-	const args = content.split(' ');
-	const commandName = args.shift().toLowerCase();
-
-	console.log(`📝 ${author} (${first_name} ${last_name}) sent command: ${commandName}`);
-	if (commandName == prefix + 'uptime') {
-		switch (args[0]) {
-			case 'add': {
-				const url = args[1];
-				let timeInterval = args[2];
-				if (!url)
-					return sendMessage(chatId, 'Please input url');
-				if (isNaN(timeInterval))
-					return sendMessage(chatId, 'Please input time interval in number');
-				timeInterval = parseInt(timeInterval * 1000);
-				const uptime = await UptimeModel.findOne({ url });
-				if (uptime)
-					return sendMessage(chatId, 'This url is already in database');
-				try {
-					const newUptime = new UptimeModel({
-						url,
-						timeInterval,
-						author
-					});
-					await newUptime.save();
-					sendMessage(chatId, `Added ${url} to database successfully, send request every ${converTime(timeInterval)}`);
-					sendRequest(url)
-						.then()
-						.catch((e) => {
-							global.temp.uptimeFail[url] = Date.now();
-							sendMessage(chatId, `${url} is down`);
-						})
-						.finally(() => {
-							global.temp.idInterval[url] = setInterval(() => getUptime(newUptime), timeInterval);
-						});
-				}
-				catch (err) {
-					console.log(err);
-					sendMessage(chatId, '❌ Error');
-				}
-				break;
-			}
-			case 'list': {
-				let uptimes = await UptimeModel.find();
-				if (args[1] == 'all') {
-					if (author != ADMIN_ID)
-						return sendMessage(chatId, '❌ You are not admin');
-				}
-				else {
-					uptimes = uptimes.filter(uptime => uptime.author == author);
-				}
-				if (!uptimes.length)
-					return sendMessage(chatId, 'No uptime in database');
-				let i = 1;
-				const text = uptimes.map(uptime => `${i++}. Url: ${uptime.url}\n   Time interval: ${converTime(uptime.timeInterval)}\n   Author: ${uptime.author}`).join('\n\n');
-				sendMessage(chatId, text);
-				break;
-			}
-			case 'remove':
-			case 'delete':
-			case 'del':
-			case '-d': {
-				const url = args.slice(1).join(' ');
-				if (!url)
-					return sendMessage(chatId, 'Please input url or id');
-				let uptime;
-				if (!isNaN(url)) {
-					const uptimes = await UptimeModel.find({});
-					uptime = uptimes[url - 1];
-				}
-				else {
-					uptime = await UptimeModel.findOne({ url });
-				}
-				if (!uptime)
-					return sendMessage(chatId, `No found uptime url with ${isNaN(url) ? 'url' : 'id'} ${url}`);
-				if (uptime.author != author)
-					return sendMessage(chatId, 'You are not owner of this uptime');
-				await UptimeModel.deleteOne({ url: uptime.url });
-				clearInterval(global.temp.idInterval[uptime.url]);
-				sendMessage(chatId, `Removed ${uptime.url} from database successfully`);
-			}
-				break;
-		}
-	}
-	else if (commandName == prefix + 'help') {
-		sendMessage(chatId, `${prefix}uptime add <url> <time interval>\n${prefix}uptime list <all>\n${prefix}uptime remove <url>\n${prefix}uptime delete <url>\n${prefix}uptime del <url>`);
-	}
-	else if (commandName == prefix + 'eval') {
-		if (author != ADMIN_ID)
-			return sendMessage(chatId, '❌ You are not admin');
-		try {
-			eval(args.join(' '));
-		}
-		catch (err) {
-			sendMessage(chatId, `❌ Error: ${err}`);
-		}
-	}
-});

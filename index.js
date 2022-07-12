@@ -85,12 +85,13 @@ function getUptime(uptime) {
 				delete global.temp.uptimeFail[uptime.url];
 			}
 		})
-		.catch(() => {
+		.catch((err) => {
 			// if (global.temp.idInterval[uptime.url])
 			// 	clearInterval(global.temp.idInterval[uptime.url]);
 			if (!global.temp.uptimeFail[uptime.url]) {
 				global.temp.uptimeFail[uptime.url] = Date.now();
 				sendMessage(uptime.author, `❌ ${uptime.url} is down`);
+				console.log(`❌ ${uptime.url} is down`, err);
 			}
 		});
 }

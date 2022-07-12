@@ -235,7 +235,7 @@ function getUptime(uptime) {
 						+ `\n   Author: ${uptime.author}`
 						+ `\n   Created at: ${createdAt.toLocaleString()}`
 						+ `\n	  Last request: ${new Date(global.temp.lastSendRequest[uptime.url]).toLocaleString()} (${converTime(Date.now() - global.temp.lastSendRequest[uptime.url])} ago)`
-						+ `\n   Continue request after: ${converTime(uptime.timeInterval - (Date.now() - global.temp.lastSendRequest[uptime.url] || 0))}`
+						+ `\n   Continue request after: ${converTime(uptime.timeInterval - (Date.now() - (global.temp.lastSendRequest[uptime.url] || 0)))}`
 						+ `\n   Request count: ${uptime.requestCount}`;
 					sendMessage(chatId, text);
 				}
@@ -267,5 +267,3 @@ function getUptime(uptime) {
 	});
 
 })();
-
-

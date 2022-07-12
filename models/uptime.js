@@ -13,6 +13,10 @@ const Uptime = new Schema({
 	author: {
 		type: Number,
 		required: true
+	},
+	countSendRequest: {
+		type: Number,
+		default: 0
 	}
 }, {
 	timestamps: true

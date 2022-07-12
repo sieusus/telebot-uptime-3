@@ -71,6 +71,10 @@ function sendRequest(url) {
 		.then()
 		.catch(() => {
 			throw new Error('Error when send request');
+		})
+		.finally(() => {
+			UptimeModel.updateOne({ url }, { $inc: { countSendRequest: 1 } });
+			global.temp.lastSendRequest = Date.now();
 		});
 }
 /**
@@ -91,6 +95,10 @@ function getUptime(uptime) {
 				sendMessage(uptime.author, `❌ ${uptime.url} is down`);
 				console.log(`❌ ${uptime.url} is down`, err);
 			}
+		})
+		.finally(() => {
+			UptimeModel.updateOne({ url: uptime.url }, { $inc: { countSendRequest: 1 } });
+			global.temp.lastSendRequest = Date.now();
 		});
 }
 
@@ -99,7 +107,8 @@ function getUptime(uptime) {
 	const WEBHOOK_URL = SERVER_URL + URI;
 	global.temp = {
 		uptimeFail: {},
-		idInterval: {}
+		idInterval: {},
+		lastSendRequest: {}
 	};
 	const init = async () => {
 		const res = await axios.get(`${TELEGRAM_API}/setWebhook?url=${WEBHOOK_URL}`);
@@ -208,8 +217,21 @@ function getUptime(uptime) {
 					await UptimeModel.deleteOne({ url: uptime.url });
 					clearInterval(global.temp.idInterval[uptime.url]);
 					sendMessage(chatId, `Removed ${uptime.url} from database successfully`);
-				}
 					break;
+				}
+				case 'info': {
+					let url = args.slice(1).join(' ');
+					if (!isNaN(url)) {
+						const uptimes = await UptimeModel.find({});
+						url = uptimes[url - 1].url;
+					}
+					if (!url)
+						return sendMessage(chatId, 'Please input url or id');
+					const uptime = await UptimeModel.findOne({ url });
+					const createdAt = new Date(uptime.createdAt);
+					const text = `Url: ${uptime.url}\n   Time interval: ${converTime(uptime.timeInterval)}\n   Author: ${uptime.author}\n   Created at: ${createdAt.toLocaleString()}\n	  Last request: ${converTime(Date.now() - uptime.lastSendRequest)}\n   Continue request after: ${converTime(Date.now() - global.temp.lastSendRequest)}\n   Request count: ${uptime.requestCount}`;
+					sendMessage(chatId, text);
+				}
 			}
 		}
 		else if (commandName == prefix + 'help') {

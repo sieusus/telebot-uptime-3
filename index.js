@@ -128,13 +128,14 @@ function getUptime(uptime) {
 app.post(URI, async (req, res) => {
 	res.send();
 	const data = req.body;
-	const { chat: { id: chatId }, text: content, from: { id: author } } = data.message || {};
+	const { chat: { id: chatId }, text: content, from: { id: author, first_name, last_name } } = data.message || {};
 	if (!chatId || !content)
 		return;
 
 	const args = content.split(' ');
 	const commandName = args.shift().toLowerCase();
 
+	console.log(`📝 ${author} (${first_name} ${last_name}) sent command: ${commandName}`);
 	if (commandName == prefix + 'uptime') {
 		switch (args[0]) {
 			case 'add': {

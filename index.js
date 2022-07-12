@@ -7,19 +7,18 @@ const express = require('express');
 const axios = require('axios');
 const bodyParser = require('body-parser');
 const mongoose = require("mongoose");
+const ngrok = require('ngrok');
 require('dotenv').config();
 
 
 const TOKEN = process.env.TOKEN;
-const SERVER_URL = process.env.URL;
 const MONGO_URI = process.env.MONGO_URI;
 const ADMIN_ID = process.env.ADMIN_ID;
 const PORT = process.env.PORT || 3000;
 
-
 const TELEGRAM_API = `https://api.telegram.org/bot${TOKEN}`;
 const URI = `/webhook/${TOKEN}`;
-const WEBHOOK_URL = SERVER_URL + URI;
+
 
 const prefix = "/";
 
@@ -96,6 +95,8 @@ function getUptime(uptime) {
 }
 
 (async () => {
+	const SERVER_URL = await ngrok.connect(PORT);
+	const WEBHOOK_URL = SERVER_URL + URI;
 	global.temp = {
 		uptimeFail: {},
 		idInterval: {}

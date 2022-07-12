@@ -14,12 +14,13 @@ const TOKEN = process.env.TOKEN;
 const SERVER_URL = process.env.URL;
 const MONGO_URI = process.env.MONGO_URI;
 const ADMIN_ID = process.env.ADMIN_ID;
+const PORT = process.env.PORT || 3000;
+
 
 const TELEGRAM_API = `https://api.telegram.org/bot${TOKEN}`;
 const URI = `/webhook/${TOKEN}`;
 const WEBHOOK_URL = SERVER_URL + URI;
 
-const PORT = 3000;
 const prefix = "/";
 
 const UptimeModel = require('./models/uptime.js');
@@ -86,8 +87,6 @@ function getUptime(uptime) {
 			}
 		})
 		.catch((err) => {
-			// if (global.temp.idInterval[uptime.url])
-			// 	clearInterval(global.temp.idInterval[uptime.url]);
 			if (!global.temp.uptimeFail[uptime.url]) {
 				global.temp.uptimeFail[uptime.url] = Date.now();
 				sendMessage(uptime.author, `❌ ${uptime.url} is down`);

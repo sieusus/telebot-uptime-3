@@ -205,7 +205,7 @@ app.post(URI, async (req, res) => {
 					uptime = await UptimeModel.findOne({ url });
 				}
 				if (!uptime)
-					return sendMessage(chatId, `No found uptime url with id ${url}`);
+					return sendMessage(chatId, `No found uptime url with ${isNaN(url) ? 'url' : 'id'} ${url}`);
 				if (uptime.author != author)
 					return sendMessage(chatId, 'You are not owner of this uptime');
 				await UptimeModel.deleteOne({ url: uptime.url });
